@@ -20,16 +20,12 @@ It is inspired by *Plan Langue*, a segment on the Belgian radio station Classic 
 way. `lessong` automates the whole production: vocal removal, lyric timing, translation, narration and a beat-aligned mix.
 
 ## Listen to an example
-<p align="center">
+
 https://github.com/user-attachments/assets/4ab61d86-ff86-4755-8b7b-fd32a2e203ef
-</p>
 
 A French song, taught in English: a short spoken intro, then each part of the song line by line (French, then English) over a loop of
 the song itself, then the real song section, and a sign-off. The song was made with Suno; see [the credits](examples/CREDITS.md).
-
-<!-- Maintainers: GitHub only plays videos it hosts itself and strips <video>/<audio> from READMEs. For an inline player, edit this
-README on github.com, drag examples/pas_tant_de_temps_lesson.mp4 into the editor, and put the user-attachments URL it inserts on its
-own line in place of the cover image above. -->
+Prefer the files? [Demo lesson (MP4)](https://github.com/eschnou/lessong/raw/main/examples/pas_tant_de_temps_lesson.mp4) · [original song (MP3)](https://github.com/eschnou/lessong/raw/main/examples/pas_tant_de_temps.mp3).
 
 It was made with one command:
 
