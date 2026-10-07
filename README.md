@@ -20,9 +20,7 @@ It is inspired by *Plan Langue*, a segment on the Belgian radio station Classic 
 way. `lessong` automates the whole production: vocal removal, lyric timing, translation, narration and a beat-aligned mix.
 
 ## Listen to an example
-<p align="center">
- <video width="630" height="300" src="https://github.com/user-attachments/assets/4ab61d86-ff86-4755-8b7b-fd32a2e203ef"></video>
-</p>
+https://github.com/user-attachments/assets/136ec041-0bc8-461f-9361-ad5ff51401d8
 
 A French song, taught in English: a short spoken intro, then each part of the song line by line (French, then English) over a loop of
 the song itself, then the real song section, and a sign-off. The song was made with Suno; see [the credits](examples/CREDITS.md).
