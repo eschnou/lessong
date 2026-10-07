@@ -21,8 +21,6 @@ way. `lessong` automates the whole production: vocal removal, lyric timing, tran
 
 ## Listen to an example
 
-https://github.com/user-attachments/assets/4ab61d86-ff86-4755-8b7b-fd32a2e203ef
-
 A French song, taught in English: a short spoken intro, then each part of the song line by line (French, then English) over a loop of
 the song itself, then the real song section, and a sign-off. The song was made with Suno; see [the credits](examples/CREDITS.md).
 Prefer the files? [Demo lesson (MP4)](https://github.com/eschnou/lessong/raw/main/examples/pas_tant_de_temps_lesson.mp4) · [original song (MP3)](https://github.com/eschnou/lessong/raw/main/examples/pas_tant_de_temps.mp3).
