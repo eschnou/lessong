@@ -17,6 +17,22 @@ section plays (the last section plays on to the song's natural end), so you hear
 It is inspired by *Plan Langue*, a segment on the Belgian radio station Classic 21 that taught English through pop songs this
 way. `lessong` automates the whole production: vocal removal, lyric timing, translation, narration and a beat-aligned mix.
 
+## Listen to an example
+
+[![Play the demo lesson](examples/cover.png)](examples/pas_tant_de_temps_lesson.mp4)
+
+*Click the picture to play the demo (4.6 min).* A French song, taught in English: a short spoken intro, then each part of the
+song line by line (French, then English) over a loop of the song itself, then the real song section, and a sign-off.
+The original song is [`examples/pas_tant_de_temps.mp3`](examples/pas_tant_de_temps.mp3) (made with Suno; see [the credits](examples/CREDITS.md)).
+
+It was made with one command:
+
+```bash
+lessong build examples/pas_tant_de_temps.mp3 --title "Pas tant de temps" --from fr --to en --no-lookup \
+  --intro "Here is a short demo on learning french with lessong" \
+  --outro "Make your own song lessons with lessong!" -o lesson.mp3
+```
+
 ## What you need
 
 - Python 3.10 – 3.12 (macOS on Apple silicon or Linux; Windows is untested)
