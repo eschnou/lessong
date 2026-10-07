@@ -6,26 +6,18 @@
 
 `lessong` turns any song into a listening lesson. For each part of the song you first hear every lyric line spoken in the
 song's language, then its translation, over a looping instrumental of the song itself. Then the music swells and the real song
-section plays (the last section plays on to the song's natural end), so you hear exactly what you were just taught. Verse, chorus, verse, chorus, and so on.
+section plays, so you hear exactly what you were just taught. Verse, chorus, verse, chorus, and so on.
 
-```
- ┌─ lesson ─────────────────────────────────────┐┌─ the real song ──────────┐
- │ line 1 (EN) · line 1 (FR) · line 2 (EN) · …  ││ verse 1, as recorded     │  ···
- │ over a seamless instrumental loop, ducked    ││ (the music swells in on  │
- │ under the voice                              ││ the loop's own beat)     │
- └──────────────────────────────────────────────┘└──────────────────────────┘
-```
-
-It is inspired by *Plan Langue*, a segment on the Belgian radio station Classic 21 that taught English through pop songs this
-way. `lessong` automates the whole production: vocal removal, lyric timing, translation, narration and a beat-aligned mix.
+It is inspired by *Plan Langue*, a segment that appeared in the 90s on the Belgian radio station Classic 21 that taught English 
+through pop songs this way. `lessong` automates the whole production: vocal removal, lyric timing, translation, narration 
+and a beat-aligned mix.
 
 ## Listen to an example
 
-https://github.com/user-attachments/assets/ec4c8ee7-a4ce-4cd2-9680-5228ab0c3877
-
 A French song, taught in English: a short spoken intro, then each part of the song line by line (French, then English) over a loop of
-the song itself, then the real song section, and a sign-off. The song was made with Suno; see [the credits](examples/CREDITS.md).
-Prefer the files? [Demo lesson (MP4)](https://github.com/eschnou/lessong/raw/main/examples/pas_tant_de_temps_lesson.mp4) · [original song (MP3)](https://github.com/eschnou/lessong/raw/main/examples/pas_tant_de_temps.mp3).
+the song itself, then the real song section, and a sign-off. 
+
+https://github.com/user-attachments/assets/ec4c8ee7-a4ce-4cd2-9680-5228ab0c3877
 
 It was made with one command:
 
@@ -34,15 +26,6 @@ lessong build examples/pas_tant_de_temps.mp3 --title "Pas tant de temps" --from 
   --intro "Here is a short demo on learning french with lessong" \
   --outro "Make your own song lessons with lessong!" -o lesson.mp3
 ```
-
-## The video
-
-`--video` makes an MP4 next to the audio (or `-o lesson.mp4` for just the video): a title card with the next section, the spoken
-intro, then for each lesson line the song-language text, with its translation appearing as the voice says it; while the real song
-plays, the section's lines are shown with the line being sung highlighted and its translation underneath; and the sign-off.
-A progress bar and the section name stay on screen. Because the picture only changes when a line changes, a five-minute video
-renders in well under a minute and is a few MB. Every moment comes from the same timeline as the audio, so the two cannot drift.
-Latin, Cyrillic and Greek text works out of the box; for other scripts pass `--video-font /path/to/font.ttf`.
 
 ## What you need
 
