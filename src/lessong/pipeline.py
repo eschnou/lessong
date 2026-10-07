@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
 from dataclasses import asdict
 from pathlib import Path
 
@@ -24,6 +25,36 @@ from .separate import separate
 
 def slug(s: str) -> str:
     return re.sub(r"[^\w]+", "-", s.lower()).strip("-") or "song"
+
+
+# Scribe reports ISO 639-3 codes (fra, nld, ...); everything else here uses ISO 639-1.
+ISO3_TO_1 = dict(eng="en", fra="fr", spa="es", deu="de", ita="it", por="pt", nld="nl", swe="sv", pol="pl", rus="ru", jpn="ja", zho="zh",
+                 kor="ko", ara="ar", tur="tr", hin="hi", dan="da", nor="no", nob="no", fin="fi", ell="el", ces="cs", hun="hu", ron="ro",
+                 ukr="uk", heb="he", ind="id", tha="th", vie="vi", cat="ca", hrv="hr", bul="bg", slk="sk", slv="sl", srp="sr", msa="ms",
+                 ben="bn", tam="ta", urd="ur", fas="fa", lit="lt", lav="lv", est="et", isl="is", gle="ga", cym="cy", eus="eu", glg="gl")
+SHARED_FILES = ("source.wav", "stems", "scribe_vocals.json", "lrclib.json", "meta.json")      # language-independent work, reused across languages
+
+
+def iso1(code: str | None) -> str | None:
+    code = (code or "").lower()
+    return code if len(code) == 2 else ISO3_TO_1.get(code)
+
+
+def default_target(source: str) -> str:
+    """English for any song that is not English; French for an English song (the original show's pairing)."""
+    return "en" if source != "en" else "fr"
+
+
+def plan_pair(ws: Workspace) -> tuple[str, str] | None:
+    if not ws.plan.exists():
+        return None
+    p = json.loads(ws.plan.read_text())
+    return p.get("source_lang"), p.get("target_lang")
+
+
+def conflicts(pair: tuple[str, str], explicit_from: str | None, explicit_to: str | None) -> bool:
+    """Does what the user asked for disagree with the languages of an existing plan? (Languages not asked for never conflict.)"""
+    return bool((explicit_from and explicit_from != pair[0]) or (explicit_to and explicit_to != pair[1]))
 
 
 class Workspace:
@@ -49,6 +80,46 @@ class Workspace:
     def inst(self): return self.stems / "no_vocals.wav"
 
 
+def choose_workspace(input_path: Path, workdir: Path | None, explicit_from: str | None, explicit_to: str | None) -> Workspace:
+    """The work folder for this run. A default folder that already holds a plan for other languages is left alone: the run gets
+    its own folder (<song>-<from>-<to>) seeded with the separated stems, so asking for a new language never overwrites an old one
+    and Demucs does not run twice. An explicit --workdir (or a folder given as input) is used as is."""
+    ws = Workspace(input_path, workdir)
+    pair = plan_pair(ws)
+    if pair is None or not conflicts(pair, explicit_from, explicit_to) or workdir is not None or input_path.is_dir():
+        return ws
+    alt_dir = ws.dir.parent / f"{ws.dir.name}-{explicit_from or pair[0]}-{explicit_to or pair[1]}"
+    created = not alt_dir.exists()
+    alt = Workspace(input_path, alt_dir)
+    if created or not alt.source.exists():
+        for name in SHARED_FILES:
+            src = ws.dir / name
+            if src.is_dir():
+                shutil.copytree(src, alt.dir / name, dirs_exist_ok=True)
+            elif src.exists():
+                shutil.copy2(src, alt.dir / name)
+    log(f"[plan] {ws.dir} holds a {pair[0]} -> {pair[1]} plan; using {alt.dir} for {explicit_from or pair[0]} -> {explicit_to or pair[1]} "
+        f"(the separated stems are copied, nothing existing is touched)")
+    return alt
+
+
+def resolve_languages(ws: Workspace, s: Settings, explicit_from: str | None, explicit_to: str | None, replanning: bool) -> None:
+    """Fix s.source_lang / s.target_lang: an existing plan decides (unless it conflicts with what was asked), otherwise what was asked,
+    otherwise None (= detect the song's language, then derive the target)."""
+    pair = plan_pair(ws)
+    if pair and not replanning:
+        if conflicts(pair, explicit_from, explicit_to):
+            raise SystemExit(
+                f"error: {ws.plan} is a {pair[0]} -> {pair[1]} plan, but you asked for {explicit_from or pair[0]} -> {explicit_to or pair[1]}.\n"
+                f"  --replan   rebuilds this plan for the new languages (overwrites it)\n"
+                f"  --workdir  DIR   uses a separate folder (without --workdir, a default folder is split by language automatically)")
+        s.source_lang, s.target_lang = pair
+        return
+    s.source_lang, s.target_lang = explicit_from, explicit_to
+    if explicit_from and not explicit_to:
+        s.target_lang = default_target(explicit_from)
+
+
 def prepare(ws: Workspace, s: Settings, force: bool) -> None:
     """decode + vocal separation"""
     audio.need_tools()
@@ -64,11 +135,6 @@ def make_plan(ws: Workspace, s: Settings, eleven: ElevenLabs, title: str | None,
     if ws.plan.exists() and not replan:
         log(f"[plan] using existing {ws.plan} (edit it freely; --replan regenerates it)")
         return json.loads(ws.plan.read_text())
-    known: dict[str, str] = {}
-    if ws.plan.exists() and not retranslate and not force:      # keep (possibly hand-edited) translations across a --replan
-        old = json.loads(ws.plan.read_text())
-        if (old.get("source_lang"), old.get("target_lang")) == (s.source_lang, s.target_lang):
-            known = {lyrics.norm(l["text"]): l["translation"] for l in old["lines"] if l.get("translation")}
     meta_file = ws.dir / "meta.json"
     saved = json.loads(meta_file.read_text()) if meta_file.exists() else {}
     tg = audio.tags(ws.input) if ws.input else {}
@@ -76,15 +142,30 @@ def make_plan(ws: Workspace, s: Settings, eleven: ElevenLabs, title: str | None,
     artist = artist or saved.get("artist") or tg.get("artist")
     meta_file.write_text(json.dumps({"title": title, "artist": artist}))
     if ws.scribe.exists() and not force:
-        words = json.loads(ws.scribe.read_text())["words"]
+        data = json.loads(ws.scribe.read_text())
     else:
-        log("[transcribe] Scribe on the isolated vocals")
+        log("[transcribe] Scribe on the isolated vocals" + ("" if s.source_lang else " (detecting the language)"))
         mp3 = ws.dir / "vocals_mono.mp3"
         audio.to_mono_mp3(ws.vocals, mp3)
-        data = eleven.scribe(mp3, s.source_lang)
+        data = eleven.scribe(mp3, s.source_lang)           # no language given: Scribe detects it
         ws.scribe.write_text(json.dumps(data))
         mp3.unlink(missing_ok=True)
-        words = data["words"]
+    words = data["words"]
+    if s.source_lang is None:
+        s.source_lang = iso1(data.get("language_code"))
+        if not s.source_lang:
+            raise SystemExit(f"error: could not tell which language is sung (detected '{data.get('language_code')}'); pass --from CODE")
+        log(f"[transcribe] the song is in {plan_mod.lang_name(s.source_lang)} ({s.source_lang}); use --from to override")
+    if s.target_lang is None:
+        s.target_lang = default_target(s.source_lang)
+        log(f"[plan] translating into {plan_mod.lang_name(s.target_lang)} ({s.target_lang}); use --to for another language")
+    if s.source_lang == s.target_lang:
+        raise SystemExit(f"error: the song and the translation are both '{s.source_lang}'; choose another --to")
+    known: dict[str, str] = {}
+    if ws.plan.exists() and not retranslate and not force:      # keep (possibly hand-edited) translations across a --replan
+        old = json.loads(ws.plan.read_text())
+        if (old.get("source_lang"), old.get("target_lang")) == (s.source_lang, s.target_lang):
+            known = {lyrics.norm(l["text"]): l["translation"] for l in old["lines"] if l.get("translation")}
     text = Path(s.lyrics_file).read_text() if s.lyrics_file else None
     act = lyrics.vocal_activity(ws.vocals)
     lines, src = lyrics.build_lines(title, artist, text, s.no_lookup, words, ws.dir / "lrclib.json" if not force and not replan else None, act)

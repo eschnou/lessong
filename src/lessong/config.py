@@ -95,6 +95,9 @@ class Settings:
     tts_stability: float = opt(None, "Voice stability, 0-1 (default: voice default).", "Text-to-speech", "render", float)
 
 
+LANGUAGE_FLAGS = {"source_lang": "detected from the singing", "target_lang": "English, or French for an English song"}
+
+
 def add_arguments(parser: argparse.ArgumentParser, stages: set[str]) -> None:
     groups: dict[str, argparse._ArgumentGroup] = {}
     for f in fields(Settings):
@@ -104,7 +107,9 @@ def add_arguments(parser: argparse.ArgumentParser, stages: set[str]) -> None:
         g = groups.setdefault(m["group"], parser.add_argument_group(m["group"]))
         flags = m["flags"] or ["--" + f.name.replace("_", "-")]
         help_ = m["help"].replace("%", "%%")
-        if isinstance(f.default, bool):
+        if f.name in LANGUAGE_FLAGS:       # None on the command line = "not asked for": detected / derived later, and never overrides a plan
+            g.add_argument(*flags, dest=f.name, type=str, default=None, metavar="CODE", help=f"{help_} [default: {LANGUAGE_FLAGS[f.name]}]")
+        elif isinstance(f.default, bool):
             g.add_argument(*flags, dest=f.name, action="store_true", default=f.default, help=help_)
         else:
             typ = m["type"] or type(f.default)
@@ -114,4 +119,6 @@ def add_arguments(parser: argparse.ArgumentParser, stages: set[str]) -> None:
 
 
 def from_args(ns: argparse.Namespace) -> Settings:
-    return Settings(**{f.name: getattr(ns, f.name) for f in fields(Settings) if hasattr(ns, f.name)})
+    """Settings from parsed arguments. The two language flags stay at their dataclass defaults when not given (the CLI resolves them)."""
+    return Settings(**{f.name: getattr(ns, f.name) for f in fields(Settings)
+                       if hasattr(ns, f.name) and not (f.name in LANGUAGE_FLAGS and getattr(ns, f.name) is None)})

@@ -98,7 +98,7 @@ class FakeEleven:
 
     def scribe(self, audio, language=None):
         self.scribe_calls += 1
-        return {"words": self.words, "language_code": language}
+        return {"words": self.words, "language_code": language or "eng"}      # no language asked for: "detect" English
 
     def tts(self, text, voice, model, speed, stability):
         self.tts_calls.append((text, voice))
@@ -114,3 +114,18 @@ class FakeEleven:
 @pytest.fixture
 def fake_eleven(synth):
     return FakeEleven(synth["words"])
+
+
+def fake_translate(lines, src, dst, model):
+    return [f"[{dst}] {l['text']}" for l in lines]
+
+
+@pytest.fixture
+def wired(monkeypatch, fake_eleven):
+    """The CLI wired to the fake clients: ElevenLabs is faked, the key is set, translation is a stub (no network, no money)."""
+    from lessong import cli
+    from lessong import plan as plan_mod
+    monkeypatch.setenv("ELEVENLABS_API_KEY", "x")
+    monkeypatch.setattr(cli, "ElevenLabs", lambda key: fake_eleven)
+    monkeypatch.setattr(plan_mod, "translate", fake_translate)
+    return fake_eleven

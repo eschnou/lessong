@@ -54,19 +54,6 @@ def test_missing_openai_key_is_reported_before_any_work(workspace, monkeypatch, 
         cli.main(["plan", str(workspace), "--lyrics-file", str(workspace / "lyr.txt")])
 
 
-def fake_translate(lines, src, dst, model):
-    return [f"[{dst}] {l['text']}" for l in lines]
-
-
-@pytest.fixture
-def wired(monkeypatch, fake_eleven):
-    monkeypatch.setenv("ELEVENLABS_API_KEY", "x")
-    monkeypatch.setattr(cli, "load_dotenv", lambda *a, **k: None)
-    monkeypatch.setattr(cli, "ElevenLabs", lambda key: fake_eleven)
-    monkeypatch.setattr(plan_mod, "translate", fake_translate)
-    return fake_eleven
-
-
 @needs_ffmpeg
 @pytest.mark.slow
 def test_build_end_to_end_on_a_synthetic_song(workspace, wired, synth, tmp_path):
@@ -183,3 +170,19 @@ def test_a_bad_video_size_fails_immediately_before_any_work(tmp_path, monkeypatc
     with pytest.raises(SystemExit, match="video-size"):
         cli.main(["render", "song.mp3", "--video", "--video-size", "huge"])
     assert not (tmp_path / ".lessong").exists()                                   # nothing was created
+
+
+def test_voices_lists_the_native_voices_first_and_warns_when_there_is_none(monkeypatch, capsys):
+    class FakeLib:
+        def __init__(self, key): pass
+        def voices(self):
+            return [dict(voice_id="a1", name="Premade speaker", category="premade", labels=dict(gender="male", language="en", accent="american"), verified_languages=[dict(language="nl")]),
+                    dict(voice_id="n1", name="Echte stem", category="professional", labels=dict(gender="female", language="nl", accent="flemish"), verified_languages=[dict(language="nl")]),
+                    dict(voice_id="x1", name="Only English", category="premade", labels=dict(gender="male", language="en"), verified_languages=[dict(language="en")])]
+    monkeypatch.setattr(cli, "ElevenLabs", FakeLib)
+    monkeypatch.setenv("ELEVENLABS_API_KEY", "x")
+    assert cli.main(["voices", "nl"]) == 0
+    out = capsys.readouterr().out
+    assert out.index("Echte stem") < out.index("Premade speaker") and "Only English" not in out and "native" in out and "n1" in out
+    assert cli.main(["voices", "it"]) == 1 and "no voice" in capsys.readouterr().out
+    assert cli.main(["voices"]) == 0 and "Only English" in capsys.readouterr().out

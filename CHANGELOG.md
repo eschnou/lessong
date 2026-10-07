@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Languages: `--from` is detected from the singing and `--to` defaults to English (French for an English song). Asking for
+  other languages than an existing plan's no longer silently reuses that plan: the run gets its own folder
+  `.lessong/<song>-<from>-<to>` (stems copied, nothing overwritten); a conflict with an explicit `--workdir` is reported.
+- `lessong voices CODE` lists the ElevenLabs voices for a language, native ones first.
+
 - Voices for languages without a named default (anything but English/French) now prefer native voices (tagged with that language)
   over voices that merely speak it, so e.g. Dutch gets a Flemish voice instead of an English-accented one.
 
