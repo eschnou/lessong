@@ -20,9 +20,7 @@ It is inspired by *Plan Langue*, a segment on the Belgian radio station Classic 
 way. `lessong` automates the whole production: vocal removal, lyric timing, translation, narration and a beat-aligned mix.
 
 ## Listen to an example
-<p align="center">
 [pas_tant_de_temps_demo 1.mp3](https://github.com/user-attachments/files/33171806/pas_tant_de_temps_demo.1.mp3)
-</p>
 
 **[▶ Download the demo lesson](https://github.com/eschnou/lessong/raw/main/examples/pas_tant_de_temps_lesson.mp4)** (4.6 min, MP4, plays in any media player) · [the original song (MP3)](https://github.com/eschnou/lessong/raw/main/examples/pas_tant_de_temps.mp3)
 
