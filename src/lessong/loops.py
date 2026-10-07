@@ -116,7 +116,7 @@ def search(an: dict, bars: int, vfree_db: float, loud_tol: float, strict: bool =
         end = c if strict else b
         if vdb[a - int(.25 * fr):end + int(.5 * fr)].max() > vfree_db:
             continue
-        if abs(float(idb[a:c].mean()) - med) > loud_tol:
+        if abs(float(idb[a:end].mean()) - med) > loud_tol:
             continue
         n = b - a
         sim = cycle_sim(Sc, a, b, n)
@@ -127,17 +127,22 @@ def search(an: dict, bars: int, vfree_db: float, loud_tol: float, strict: bool =
     return sorted(out, key=lambda d: -d["score"])
 
 
-def candidates(an: dict, bars: int, s: Settings, top: int = 40) -> tuple[list[Loop], str]:
+def candidates(an: dict, bars: int, s: Settings, top: int = 40, allow_vocal: bool = False) -> tuple[list[Loop], str]:
     """Ranked loops for a given length. Relaxes the voice-free threshold step by step if the song has no clean stretch."""
     from .lyrics import vocal_threshold
     base = vocal_threshold(an["vdb"])
     steps = [s.loop_vfree_db] if s.loop_vfree_db is not None else [base, base + 6, base + 12]    # relax upwards if nothing qualifies
+    if allow_vocal:
+        steps = [1e9]            # anywhere in the song: the instrumental stem has the voice taken out already
     for k, (vf, strict) in enumerate((vf, st) for vf in steps for st in (True, False)):
         tol = s.loop_loudness_tol * (1 if k < 4 else 2)
         cs = search(an, bars, vf, tol, strict)
         if cs:
-            note = ("" if vf == steps[0] else f"voice-free threshold relaxed to {vf:.0f} dB: a little vocal bleed may remain") \
-                + ("" if strict else ("; " if vf != steps[0] else "") + "only the loop itself is voice-free (the repeat check uses the instrumental stem)")
+            if allow_vocal:
+                note = "no voice-free stretch long enough: cut from the instrumental stem where the song has singing (check for faint vocal residue)"
+            else:
+                note = ("" if vf == steps[0] else f"voice-free threshold relaxed to {vf:.0f} dB: a little vocal bleed may remain") \
+                    + ("" if strict else ("; " if vf != steps[0] else "") + "only the loop itself is voice-free (the repeat check uses the instrumental stem)")
             res = []
             for d in cs[:top]:
                 loop = render(an["nov"], d["t"], d["length"], s.loop_crossfade)
@@ -154,6 +159,10 @@ def pick(an: dict, s: Settings) -> Loop:
         loop = render(an["nov"], s.loop_start, L, s.loop_crossfade)
         return Loop(s.loop_start, L, s.loop_bars, float("nan"), seam_ratio(an["nov"], loop, s.loop_start, L), "manual start")
     cs, note = candidates(an, s.loop_bars, s)
+    if not cs:       # prefer the requested length taken from the instrumental stem over a shorter loop, if it repeats well
+        alt, alt_note = candidates(an, s.loop_bars, s, allow_vocal=True)
+        if alt and alt[0].sim >= 0.45:
+            cs, note = alt, alt_note
     for b in sorted({s.loop_bars // 2, s.loop_bars // 4, 1} - {0}, reverse=True):     # e.g. 4 -> 2 -> 1 bar
         if cs or b >= s.loop_bars:
             continue

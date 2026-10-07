@@ -38,6 +38,15 @@ class Settings:
     song_fade_out: float = opt(1.5, "Fade-out of the song excerpt (seconds).", "Song excerpt")
     song_gain_db: float = opt(-2.0, "Gain applied to the song excerpt (dB).", "Song excerpt")
 
+    # ---- spoken intro and outro ------------------------------------------------
+    intro: str = opt(None, "Text read at the very start, over the loop, before the first lesson (e.g. the name of your show).", "Intro & outro", "render", str)
+    intro_lang: str = opt("target", "Which voice reads the intro: the translation language ('target') or the song's language ('source').", "Intro & outro", "render", str, None, ["target", "source"])
+    intro_bars: int = opt(2, "Bars of music left after the intro, before the first lesson line (the loop swells and settles over them).", "Intro & outro")
+    intro_swell_db: float = opt(10.0, "How far the music rises above its normal bed level during those bars (dB).", "Intro & outro")
+    outro: str = opt(None, "Text read after the song has played to its end: just the voice, no music (e.g. a sign-off).", "Intro & outro", "render", str)
+    outro_lang: str = opt("target", "Which voice reads the outro: the translation language ('target') or the song's language ('source').", "Intro & outro", "render", str, None, ["target", "source"])
+    outro_gap: float = opt(1.0, "Silence between the end of the song and the outro (seconds).", "Intro & outro")
+
     # ---- bed -> song hand-over ---------------------------------------------
     swell_bars: float = opt(1.0, "After the last voice, the bed swells up to the song's loudness over this many bars.", "Transition")
     transition_bars: float = opt(1.0, "Length of the beat-aligned crossfade from the bed into the song, in bars.", "Transition")

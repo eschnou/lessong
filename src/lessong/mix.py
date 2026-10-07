@@ -56,12 +56,15 @@ def smoothstep(n: int) -> np.ndarray:
 
 
 def learn_block(lines: list[dict], voices: Voices, loop: np.ndarray, s: Settings, trans: dict | None = None,
-                intro: dict | None = None) -> tuple[np.ndarray, int]:
+                intro: dict | None = None, prelude: dict | None = None) -> tuple[np.ndarray, int]:
     """[lead-in] (src line, pause, translation, pause)* over a looped, ducked instrumental bed. Stereo.
     intro: the previous song excerpt hands over to this block (phase = where in the loop it enters, xfade, target_rms = the song's
            level, bar). The bed fades in at the song's loudness (overlapping the end of the song), then settles to bed level.
     trans: the bed swells to the song's loudness and fades out, on the loop's beat, so the next song excerpt can be laid on top
-           at the returned sample T0. Returns (audio, T0); T0 == len(audio) without a transition."""
+           at the returned sample T0. Returns (audio, T0); T0 == len(audio) without a transition.
+    prelude: a spoken intro (audio, bar = samples per loop bar, bars, swell_db) placed after the lead-in. After it the music plays
+           alone for the rest of the bar plus `bars` full bars (rising by swell_db in the first, settling in the last), so the first
+           lesson line lands on a bar line of the loop. Timing is reported back in prelude["timing"] (seconds)."""
     z = lambda sec: np.zeros(int(sec * SR))
     p_in = 0
     if intro:
@@ -72,6 +75,15 @@ def learn_block(lines: list[dict], voices: Voices, loop: np.ndarray, s: Settings
         parts = [np.zeros(Xi + st + int(0.3 * SR))]      # the first voice waits until the music has settled
     else:
         parts = [z(s.lead_in)]
+    gap = None
+    if prelude:
+        parts.append(prelude["audio"])
+        spoken_end = sum(len(x) for x in parts)
+        bar = prelude["bar"]
+        teach_at = int(round(math.ceil(spoken_end / bar) * bar + prelude["bars"] * bar))     # a bar line of the loop
+        parts.append(np.zeros(teach_at - spoken_end))
+        gap = (spoken_end, teach_at)
+        prelude["timing"] = dict(speech_start=(spoken_end - len(prelude["audio"])) / SR, speech_end=spoken_end / SR, teach_start=teach_at / SR)
     for l in lines:
         parts += [voices.speak(l["text"].rstrip(".,;:"), s.source_lang), z(s.gap_lang),
                   voices.speak(l["translation"], s.target_lang), z(s.gap_line)]
@@ -95,6 +107,14 @@ def learn_block(lines: list[dict], voices: Voices, loop: np.ndarray, s: Settings
     lg = db_to_gain(s.learn_gain_db)
     base0 = vr * db_to_gain(s.bed_db) * lg
     gain = vr * db_to_gain(s.bed_db) * 10 ** (s.duck_db * act / 20) * lg
+    if gap:
+        g0, g1 = gap
+        n_g = g1 - g0
+        up, down = min(int(prelude["bar"]), n_g // 2), min(int(prelude["bar"]), n_g // 2)
+        shape = np.ones(n_g)
+        shape[:up] = smoothstep(up)
+        shape[n_g - down:] = 1 - smoothstep(down)
+        gain[g0:g1] *= 10 ** (prelude["swell_db"] * shape / 20)               # the music rises, then settles before the first line
     if intro:
         full2 = intro["target_rms"] / rms(bed[:Xi])
         gain[:Xi] = full2 * smoothstep(Xi)                                    # fades in as the song fades out: constant level
@@ -128,12 +148,15 @@ def song_windows(plan: dict, s: Settings, duration: float) -> list[dict]:
         if k > 0:    # boundary with the previous section = best pause after its last line
             prev_last = L[plan["sections"][k - 1]["lines"][-1]]
             a = max(a, prev_last.get("vgap_mid", (prev_last["end"] + first["start"]) / 2))
+        last_section = k == len(plan["sections"]) - 1
+        if last_section:
+            b = duration                                   # the song plays out to its natural end (outro, held chord, vocalise...)
         if k < len(plan["sections"]) - 1:
             b = min(b, last.get("vgap_mid", (last["end"] + L[plan["sections"][k + 1]["lines"][0]]["start"]) / 2))
         b = max(b, sing1 if last.get("vgap", 1) >= REAL_PAUSE else b)
         out.append(dict(start=a, end=b,
                         fade_in=min(s.song_fade_in, max(0.05, sing0 - a)),
-                        fade_out=min(s.song_fade_out, max(0.1, b - sing1)),
+                        fade_out=0.05 if last_section else min(s.song_fade_out, max(0.1, b - sing1)),
                         cut_in_singing=bool(k < len(plan["sections"]) - 1 and last.get("vgap", 1) < REAL_PAUSE)))
     return out
 
@@ -187,6 +210,10 @@ def assemble(plan: dict, s: Settings, source_wav: Path, loop: Loop, nov: np.ndar
 
     # 2. lay everything on a timeline
     tr, report, cursor, intro = Track(), [], 0, None
+    prelude, intro_timing, last_song_end = None, None, None
+    if s.intro and any(has_nar):
+        prelude = dict(audio=voices.speak(s.intro, s.target_lang if s.intro_lang == "target" else s.source_lang),
+                       bar=bar, bars=s.intro_bars, swell_db=s.intro_swell_db)
     for k, (sec, w) in enumerate(zip(secs, wins)):
         ent, ext = entries[k], exits[k]
         nar = [L[i] for i in sec["lines"] if L[i]["narrate"]]
@@ -196,7 +223,10 @@ def assemble(plan: dict, s: Settings, source_wav: Path, loop: Loop, nov: np.ndar
         xe = int(ent["xfade"] * SR) if ent else 0
         trans = dict(bar=bar, xfade=ent["xfade"], target_rms=rms(song[:xe]), phase=ent["phase"]) if ent else None
         if nar:
-            block, T0 = learn_block(nar, voices, loop_audio, s, trans, intro)
+            block, T0 = learn_block(nar, voices, loop_audio, s, trans, intro, prelude)
+            if prelude:
+                intro_timing, prelude = prelude.get("timing"), None          # only the very first lesson gets the intro
+                log(f"[mix] intro: spoken {intro_timing['speech_start']:.1f}-{intro_timing['speech_end']:.1f}s, then music; first lesson line at {intro_timing['teach_start']:.1f}s")
             tr.add(block, cursor)
         else:
             T0 = 0
@@ -215,17 +245,29 @@ def assemble(plan: dict, s: Settings, source_wav: Path, loop: Loop, nov: np.ndar
             intro = None
             song = fade(song, 0.0, w["fade_out"] if not ext else 0.0)
             nxt_cursor = song_at + len(song) + int(s.gap_section * SR)
+            last_song_end = song_at + len(song)
         tr.add(song, song_at)
         log(f"[mix] section {k + 1}/{len(secs)}: {len(nar)} lines; song in "
             + (f"at {s0:.2f}s on the loop's beat {ent['q'] + 1} ({ent['xfade']:.2f}s crossfade)" if ent else f"at {s0:.1f}s (plain fade)")
             + "; out "
             + (f"at {ext['t']:.2f}s into the loop's beat {ext['q'] + 1} ({ext['xfade']:.2f}s crossfade)" if ext else f"at {s1:.1f}s (plain fade)") + warn)
-        report.append(dict(section=k + 1, entry=s0 if ent else None, at=(cursor + T0) / SR if ent else None,
+        report.append(dict(section=k + 1, song_out=s1, entry=s0 if ent else None, at=(cursor + T0) / SR if ent else None,
                            **({"xfade": ent["xfade"], "q": ent["q"], "phase": ent["phase"], "onset_corr": ent["onset_corr"]} if ent else {}),
                            exit=dict(t=ext["t"], xfade=ext["xfade"], q=ext["q"], phase=ext["phase"], at=(song_at + len(song)) / SR - ext["xfade"]) if ext else None))
         cursor = nxt_cursor
+    outro_timing = None
+    if s.outro and last_song_end is not None:             # after the song: just the voice, no music
+        v = voices.speak(s.outro, s.target_lang if s.outro_lang == "target" else s.source_lang) * db_to_gain(s.learn_gain_db)
+        at = last_song_end + int(s.outro_gap * SR)
+        tr.add(np.stack([v, v], 1), at)
+        outro_timing = dict(song_end=last_song_end / SR, speech_start=at / SR, speech_end=(at + len(v)) / SR)
+        log(f"[mix] outro: the song ends at {outro_timing['song_end']:.1f}s, then the voice ({outro_timing['speech_start']:.1f}-{outro_timing['speech_end']:.1f}s), no music")
     audio = tr.audio()
     sf.write(tmp_wav, audio, SR)
+    if outro_timing:
+        report.append({"outro": outro_timing})
+    if s.intro and intro_timing:
+        report.insert(0, {"intro": intro_timing})
     (tmp_wav.parent / "transitions.json").write_text(__import__("json").dumps(report, indent=1))
     encode(tmp_wav, out, s.bitrate, s.ceiling_db)
     return len(audio) / SR

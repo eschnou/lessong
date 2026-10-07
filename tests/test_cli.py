@@ -120,3 +120,40 @@ def test_replan_keeps_translations_and_can_drop_repeated_sections(workspace, wir
     cli.main([*base, "--replan"])
     assert json.loads((workspace / "plan.json").read_text())["lines"][0]["translation"] == "edited by hand"
     assert wired.scribe_calls == 1                                                         # Scribe is not re-run on a replan
+
+
+@needs_ffmpeg
+@pytest.mark.slow
+def test_intro_text_is_spoken_by_the_translation_voice_and_lengthens_the_track(workspace, wired, synth, tmp_path):
+    (workspace / "lyrics.txt").write_text(synth["lyrics"])
+    plan_args = ["--sections", "gap", "--min-lines", "2", "--max-lines", "4", "--section-gap", "3"]
+    cli.main(["build", str(workspace), "--lyrics-file", str(workspace / "lyrics.txt"), *plan_args, "--loop-bars", "4", "--to", "xx", "-o", str(tmp_path / "a.mp3")])
+    plain = sf.info(str(workspace / "mix.wav")).duration
+    cli.main(["render", str(workspace), "--loop-bars", "4", "--to", "xx", "--intro", "Welcome to the show", "-o", str(tmp_path / "b.mp3")])
+    assert ("Welcome to the show", "src") in wired.tts_calls            # 'xx' is the target language here; the fake maps it to the "src" voice
+    timing = json.loads((workspace / "transitions.json").read_text())[0]["intro"]
+    assert timing["speech_start"] == pytest.approx(2.0, abs=0.01) and timing["teach_start"] > timing["speech_end"] + 2 * 2.0 - 0.01
+    assert sf.info(str(workspace / "mix.wav")).duration == pytest.approx(plain + 6.0, abs=0.2)     # lead-in 2 s + speech 1.5 s + the rest of the bar + two bars
+    cli.main(["render", str(workspace), "--loop-bars", "4", "--to", "xx", "-o", str(tmp_path / "c.mp3")])           # and it goes away again
+    assert abs(sf.info(str(workspace / "mix.wav")).duration - plain) < 0.5
+
+
+@needs_ffmpeg
+@pytest.mark.slow
+def test_outro_is_the_voice_alone_after_the_song_has_played_to_its_end(workspace, wired, synth, tmp_path):
+    (workspace / "lyrics.txt").write_text(synth["lyrics"])
+    plan_args = ["--sections", "gap", "--min-lines", "2", "--max-lines", "4", "--section-gap", "3"]
+    cli.main(["build", str(workspace), "--lyrics-file", str(workspace / "lyrics.txt"), *plan_args, "--loop-bars", "4", "--to", "xx", "-o", str(tmp_path / "a.mp3")])
+    plain = sf.info(str(workspace / "mix.wav")).duration
+    cli.main(["render", str(workspace), "--loop-bars", "4", "--to", "xx", "--outro", "See you next time", "--outro-gap", "1.5", "-o", str(tmp_path / "b.mp3")])
+    assert ("See you next time", "src") in wired.tts_calls
+    rep = json.loads((workspace / "transitions.json").read_text())
+    o = rep[-1]["outro"]
+    assert rep[-2]["song_out"] == pytest.approx(synth["duration"], abs=0.01)           # the last excerpt runs to the very end of the song (64 s)
+    assert o["speech_start"] == pytest.approx(o["song_end"] + 1.5, abs=0.01)
+    y, sr = sf.read(workspace / "mix.wav")
+    gap = abs(y[int((o["song_end"] + 0.3) * sr):int((o["speech_start"] - 0.05) * sr)]).max()
+    assert gap < 0.01                                                                   # silence between the song and the voice
+    assert abs(y[int(o["speech_start"] * sr):int(o["speech_end"] * sr)]).max() > 0.02       # then the voice
+    assert sf.info(str(workspace / "mix.wav")).duration == pytest.approx(o["speech_end"], abs=0.05)   # and nothing after it: no music tail
+    assert o["speech_end"] - o["speech_start"] > 0.5 and plain < sf.info(str(workspace / "mix.wav")).duration

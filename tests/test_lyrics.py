@@ -120,3 +120,12 @@ def test_build_lines_prefers_the_provided_lyrics_and_falls_back_to_the_transcrip
 def test_poor_lyric_match_falls_back_to_the_transcript(synth):
     lines, src = build_lines(None, None, "completely unrelated text\nnothing in common at all", False, synth["words"])
     assert src == "transcript"
+
+
+def test_cut_goes_in_the_middle_of_a_real_silence_not_the_middle_of_the_word_gap():
+    act = np.zeros(int(20 / HOP), bool)
+    for a, b in ((1.0, 7.7), (8.1, 12.0)):            # a held note until 7.7 s, a 0.4 s silence, then the next line
+        act[int(a / HOP):int(b / HOP)] = True
+    lines = [{"start": 1.0, "end": 6.0}, {"start": 8.1, "end": 11.9}]     # the transcript says the first line ended long before the note did
+    annotate_vocals(lines, act)
+    assert 7.7 < lines[0]["vgap_mid"] < 8.1 and lines[0]["vgap"] >= 2.0 and lines[0]["sing_end"] >= 7.6

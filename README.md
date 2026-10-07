@@ -4,7 +4,7 @@
 
 `lessong` turns any song into a listening lesson. For each part of the song you first hear every lyric line spoken in the
 song's language, then its translation, over a looping instrumental of the song itself. Then the music swells and the real song
-section plays, so you hear exactly what you were just taught. Verse, chorus, verse, chorus, and so on.
+section plays (the last section plays on to the song's natural end), so you hear exactly what you were just taught. Verse, chorus, verse, chorus, and so on.
 
 ```
  ┌─ lesson ─────────────────────────────────────┐┌─ the real song ──────────┐
@@ -50,6 +50,7 @@ That runs the whole pipeline (about 4–5 minutes for a 4-minute song on an Appl
 lessong build song.mp3 --title "…" --artist "…" --to es --voice-gender female -o lesson.mp3
 lessong build song.mp3 --lyrics-file my_lyrics.txt -o lesson.mp3     # skip the online lookup, use your own text
 lessong build song.mp3 --repeats skip -o short.mp3                   # don't repeat a chorus you already taught
+lessong render .lessong/song --intro "Welcome to my show" -o lesson.mp3  # add a spoken intro (2 bars of music, then the first lesson)
 ```
 
 ### Edit, then re-render (the fast loop)
@@ -101,10 +102,13 @@ reach for:
 | `--sections llm\|gap` | cut by song structure (default) or by pauses and size only |
 | `--max-lines`, `--min-lines` | section size |
 | `--repeats teach\|skip` | teach a returning chorus again (default) or leave repeated sections out |
-| `--loop-bars`, `--loop-start` | loop length (default 4, falls back to shorter) or force its start time |
+| `--loop-bars`, `--loop-start` | loop length (default 4; if the song has no voice-free stretch that long, it is cut from the instrumental stem where the song sings, or falls back to a shorter loop) or force its start time |
 | `--bed-db`, `--duck-db` | how far the music sits under the voice, and how much extra it dips while someone speaks |
 | `--swell-bars`, `--transition-bars`, `--settle-bars` | length of the swell, the crossfade and the settle after the song |
 | `--plain-entry` | turn the beat-aligned transitions off |
+| `--intro "text"` | a spoken intro (e.g. your show's name) read over the loop before the first lesson, in the translation voice (`--intro-lang source` for the song's voice) |
+| `--outro "text"` | a sign-off read after the song has played to its very end: the voice alone, no music (`--outro-lang`, `--outro-gap` for the silence before it) |
+| `--intro-bars`, `--intro-swell-db` | music left after the intro before the first lesson line (default 2 bars, rising 10 dB then settling) |
 | `--lead-in`, `--gap-lang`, `--gap-line` | timing of the narration |
 | `--tts-model`, `--tts-speed` | ElevenLabs model and speaking speed |
 | `--llm-model` | OpenAI model for translation and structure |

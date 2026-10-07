@@ -254,8 +254,9 @@ def annotate_vocals(lines: list[dict], act) -> None:
         else:                # no clear silence: the phrase ends just after the last word (plus a little decay)
             sing_end = l["end"] + min(0.15, word_gap / 2 + 0.02)
         l["sing_end"] = round(min(max(l["end"], sing_end), nxt["start"] if nxt else 1e9), 2)
-        if best and run_len >= word_gap:
-            l["vgap"], l["vgap_mid"] = round(run_len, 2), round((best[0] + best[1]) / 2 * HOP, 2)
+        if best and run_len >= 0.15:
+            # a real silence exists: cut in the middle of it (the transcript's word end can fall inside a held note)
+            l["vgap"], l["vgap_mid"] = round(max(run_len, word_gap), 2), round((best[0] + best[1]) / 2 * HOP, 2)
         else:
             l["vgap"] = round(word_gap, 2)
             l["vgap_mid"] = round((l["end"] + nxt["start"]) / 2 if nxt else l["end"] + 1.0, 2)

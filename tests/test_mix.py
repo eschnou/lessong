@@ -35,7 +35,7 @@ def test_song_windows_cut_in_pauses_and_fade_only_after_singing():
     plan = {"lines": L, "sections": [{"lines": [0, 1]}, {"lines": [2, 3]}]}
     w0, w1 = song_windows(plan, Settings(song_preroll=2, song_tail=1.5, song_fade_out=1.5), 100)
     assert w0["end"] == 17.5 and w1["start"] == 17.5
-    assert w0["end"] - w0["fade_out"] >= 17.2 and w1["end"] == 25.5 and not w0["cut_in_singing"]
+    assert w0["end"] - w0["fade_out"] >= 17.2 and w1["end"] == 100 and not w0["cut_in_singing"]      # the last excerpt plays the song to its natural end
 
 
 def test_song_windows_flag_a_cut_inside_continuous_singing():
@@ -112,3 +112,37 @@ def test_voices_cache_tts_so_a_second_render_costs_nothing(tmp_path, fake_eleven
     assert rms(a) == pytest.approx(db_to_gain(s.voice_level_db), rel=0.01)
     v.speak("hello there", "fr")                      # a different voice is a different cache entry
     assert len(fake_eleven.tts_calls) == 2
+
+
+def test_intro_is_spoken_over_the_loop_then_music_alone_then_the_first_line_lands_on_a_bar_line():
+    s = Settings(lead_in=1.0, learn_tail=0.5)
+    loop, bar = _loop(), len(_loop()) / 2                 # a 4 s loop of two 2 s bars
+    prelude = dict(audio=np.sin(2 * np.pi * 500 * np.arange(int(1.4 * SR)) / SR) * db_to_gain(s.voice_level_db) * 1.4142, bar=bar, bars=2, swell_db=10.0)
+    block, _ = learn_block([{"text": "a", "translation": "b"}], StubVoices(s), loop, s, prelude=prelude)
+    t = prelude["timing"]
+    assert t["speech_start"] == 1.0 and t["speech_end"] == pytest.approx(2.4, abs=1e-3)
+    assert t["teach_start"] == pytest.approx(2.0 * (2 + 2), abs=1e-3)                    # next bar line after 2.4 s is 4 s; plus two full bars = 8 s
+    assert (t["teach_start"] * SR) % bar == pytest.approx(0, abs=2)
+    at = lambda a, b: rms(block[int(a * SR):int(b * SR)])
+    ref, _ = learn_block([{"text": "a", "translation": "b"}], StubVoices(s), loop, Settings(lead_in=5.0, learn_tail=0.5))
+    bed = rms(ref[int(2.0 * SR):int(4.0 * SR)])                                 # the bed on its own, after the 1 s fade-in
+    assert at(1.2, 2.3) > 3 * bed                                               # the intro is spoken over the music
+    mid = at(5.0, 6.0)                                                          # the music alone, in the middle of the two bars
+    assert mid > 2 * bed and mid < 0.9 * at(1.2, 2.3)                           # swelled well above the bed, but below the voice
+    assert at(7.7, 7.95) < 1.5 * bed                                            # settled back to bed level before the first line
+    assert at(8.05, 8.4) > 3 * at(7.7, 7.95)                                    # then the first lesson line
+
+
+def test_no_intro_means_nothing_changes():
+    s = Settings(lead_in=1.0, learn_tail=1.0)
+    a, _ = learn_block([{"text": "a", "translation": "b"}], StubVoices(s), _loop(), s)
+    b, _ = learn_block([{"text": "a", "translation": "b"}], StubVoices(s), _loop(), s, prelude=None)
+    assert np.array_equal(a, b)
+
+
+def test_the_last_excerpt_stops_at_the_end_of_the_song_and_cuts_at_real_silence():
+    L = mk([(10, 12), (14, 16)])
+    L[0].update(sing_end=12.0, vgap=1.0, vgap_mid=13.0)
+    plan = {"lines": L, "sections": [{"lines": [0]}, {"lines": [1]}]}
+    w0, w1 = song_windows(plan, Settings(), 30.0)
+    assert w1["end"] == 30.0 and w1["fade_out"] <= 0.05      # no fade-out: the song ends by itself and w0["end"] == 13.0 and w1["start"] == 13.0
