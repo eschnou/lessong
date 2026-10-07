@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import sys
 from pathlib import Path
@@ -100,13 +101,12 @@ def main(argv: list[str] | None = None) -> int:
         if a.cmd == "loops":
             pl.list_loops(ws, s)
             return 0
-        eleven = ElevenLabs(os.environ.get("ELEVENLABS_API_KEY"))
-        if a.cmd == "render":
+        if a.cmd == "render":                      # check the cheap local things before asking for credentials
             if not ws.plan.exists():
                 raise SystemExit(f"error: {ws.plan} not found; run `lessong plan` or `build` first")
-            import json
             plan = json.loads(ws.plan.read_text())
-        else:
+        eleven = ElevenLabs(os.environ.get("ELEVENLABS_API_KEY"))
+        if a.cmd != "render":
             plan = pl.make_plan(ws, s, eleven, a.title, a.artist, a.replan or a.force, a.force, a.retranslate)
         if a.cmd in ("build", "render"):
             out = a.output or Path(f"{pl.slug(plan['meta'].get('title') or ws.dir.name)}.lessong.mp3")

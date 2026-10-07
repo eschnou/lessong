@@ -10,6 +10,14 @@ import pytest
 import soundfile as sf
 
 SR = 44100
+
+
+@pytest.fixture(autouse=True)
+def hermetic_environment(monkeypatch):
+    """The suite must pass on any machine: no API keys from the developer's shell or .env, whatever the working directory."""
+    monkeypatch.delenv("ELEVENLABS_API_KEY", raising=False)
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.setattr("lessong.cli.load_dotenv", lambda *a, **k: None)
 BPM = 120
 BEAT = 60 / BPM          # 0.5 s
 BAR = 4 * BEAT           # 2 s
