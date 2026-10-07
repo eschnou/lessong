@@ -72,6 +72,7 @@ class ElevenLabs:
         if (lang, gender) in DEFAULT_VOICES:
             return DEFAULT_VOICES[(lang, gender)]
         pool = [v for v in self.voices() if lang in {x.get("language") for x in (v.get("verified_languages") or [])} | {(v.get("labels") or {}).get("language")}]
+        pool.sort(key=lambda v: (v.get("labels") or {}).get("language") != lang)       # native voices first, then ones that merely speak it
         same = [v for v in pool if (v.get("labels") or {}).get("gender") == gender]
         if same or pool:
             v = (same or pool)[0]

@@ -70,3 +70,13 @@ def test_tts_only_sends_voice_settings_that_were_asked_for(monkeypatch):
     el.tts("hi", "v", "model", None, None)
     el.tts("hi", "v", "model", 0.9, None)
     assert "voice_settings" not in sent[0] and sent[1]["voice_settings"] == {"speed": 0.9}
+
+
+def test_a_native_voice_is_preferred_over_one_that_merely_speaks_the_language():
+    el = ElevenLabs("key")
+    el._voices = [dict(voice_id="fr_accent", name="Premade", labels=dict(gender="male", language="en"), verified_languages=[dict(language="nl")]),
+                  dict(voice_id="native_m", name="Native", labels=dict(gender="male", language="nl", accent="flemish"), verified_languages=[dict(language="nl")]),
+                  dict(voice_id="native_f", name="Nativa", labels=dict(gender="female", language="nl"), verified_languages=[dict(language="nl")])]
+    assert el.resolve_voice(None, "nl", "male") == "native_m" and el.resolve_voice(None, "nl", "female") == "native_f"
+    el._voices = el._voices[:1]                                                # no native voice at all: the speaker of the language is still used
+    assert el.resolve_voice(None, "nl", "male") == "fr_accent"

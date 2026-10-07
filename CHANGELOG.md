@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Voices for languages without a named default (anything but English/French) now prefer native voices (tagged with that language)
+  over voices that merely speak it, so e.g. Dutch gets a Flemish voice instead of an English-accented one.
+
 - `--video` / `-o lesson.mp4`: a lyric-synced lesson video (title card, spoken lines with their translation appearing as it is said,
   karaoke view of the real song, intro/outro text, progress bar). Rendered from the mixer's timeline with Pillow + ffmpeg;
   `--video-size`, `--video-fps`, `--video-font`. Bundles DejaVu Sans (see `src/lessong/assets/DejaVu-LICENSE.txt`).
