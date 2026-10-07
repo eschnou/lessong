@@ -21,11 +21,16 @@ way. `lessong` automates the whole production: vocal removal, lyric timing, tran
 
 ## Listen to an example
 
-[![Play the demo lesson](examples/cover.png)](examples/pas_tant_de_temps_lesson.mp4)
+<p align="center"><img src="examples/cover.png" width="560" alt="lessong demo lesson"></p>
 
-*Click the picture to play the demo (4.6 min).* A French song, taught in English: a short spoken intro, then each part of the
-song line by line (French, then English) over a loop of the song itself, then the real song section, and a sign-off.
-The original song is [`examples/pas_tant_de_temps.mp3`](examples/pas_tant_de_temps.mp3) (made with Suno; see [the credits](examples/CREDITS.md)).
+**[▶ Download the demo lesson](https://github.com/eschnou/lessong/raw/main/examples/pas_tant_de_temps_lesson.mp4)** (4.6 min, MP4, plays in any media player) · [the original song (MP3)](https://github.com/eschnou/lessong/raw/main/examples/pas_tant_de_temps.mp3)
+
+A French song, taught in English: a short spoken intro, then each part of the song line by line (French, then English) over a loop of
+the song itself, then the real song section, and a sign-off. The song was made with Suno; see [the credits](examples/CREDITS.md).
+
+<!-- Maintainers: GitHub only plays videos it hosts itself and strips <video>/<audio> from READMEs. For an inline player, edit this
+README on github.com, drag examples/pas_tant_de_temps_lesson.mp4 into the editor, and put the user-attachments URL it inserts on its
+own line in place of the cover image above. -->
 
 It was made with one command:
 
