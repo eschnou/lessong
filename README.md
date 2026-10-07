@@ -1,5 +1,7 @@
 # lessong
 
+[![CI](https://github.com/eschnou/lessong/actions/workflows/ci.yml/badge.svg)](https://github.com/eschnou/lessong/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 **Learn a language from the songs you love.**
 
 `lessong` turns any song into a listening lesson. For each part of the song you first hear every lyric line spoken in the
@@ -44,7 +46,7 @@ lessong build examples/pas_tant_de_temps.mp3 --title "Pas tant de temps" --from 
 ## Install
 
 ```bash
-git clone https://github.com/<you>/lessong && cd lessong
+git clone https://github.com/eschnou/lessong && cd lessong
 uv sync                                  # or: pip install -e .
 cp .env.example .env                     # then paste your two API keys into .env
 uv run lessong doctor                    # checks ffmpeg, the keys and the compute device

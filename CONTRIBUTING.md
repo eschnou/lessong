@@ -3,7 +3,7 @@
 Thanks for helping! The short version:
 
 ```bash
-git clone <your fork> && cd lessong
+git clone https://github.com/eschnou/lessong && cd lessong      # or your fork
 uv sync --extra dev            # Python 3.10-3.12, installs PyTorch/Demucs too
 uv run pytest                  # ~45 s; no network, no API keys, no real music needed
 uv run ruff check src tests

@@ -34,6 +34,12 @@ dependencies = [
   "openai>=1.40",
 ]
 
+[project.urls]
+Homepage = "https://github.com/eschnou/lessong"
+Repository = "https://github.com/eschnou/lessong"
+Issues = "https://github.com/eschnou/lessong/issues"
+Changelog = "https://github.com/eschnou/lessong/blob/main/CHANGELOG.md"
+
 [project.optional-dependencies]
 dev = ["pytest>=8", "ruff>=0.6"]
 
