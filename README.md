@@ -21,7 +21,7 @@ way. `lessong` automates the whole production: vocal removal, lyric timing, tran
 
 ## Listen to an example
 <p align="center">
-https://github.com/user-attachments/assets/4ab61d86-ff86-4755-8b7b-fd32a2e203ef
+ <video width="630" height="300" src="https://github.com/user-attachments/assets/4ab61d86-ff86-4755-8b7b-fd32a2e203ef"></video>
 </p>
 
 A French song, taught in English: a short spoken intro, then each part of the song line by line (French, then English) over a loop of
