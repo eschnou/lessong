@@ -1,0 +1,74 @@
+[project]
+name = "lessong"
+version = "0.1.0"
+description = "Turn any song into a language lesson: each lyric line is spoken in the song's language, then translated, over an instrumental loop of the song, followed by the real song."
+readme = "README.md"
+requires-python = ">=3.10,<3.13"
+license = { text = "MIT" }
+authors = [{ name = "Laurent Eschenauer" }]
+keywords = ["language-learning", "music", "text-to-speech", "demucs", "elevenlabs", "audio", "cli"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Environment :: Console",
+  "Intended Audience :: Education",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: MacOS",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Education",
+  "Topic :: Multimedia :: Sound/Audio",
+]
+dependencies = [
+  "demucs>=4.0.1",
+  "torch>=2.2",
+  "torchaudio>=2.2",
+  "librosa>=0.10",
+  "numpy",
+  "scipy",
+  "soundfile",
+  "requests",
+  "python-dotenv",
+  "openai>=1.40",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.6"]
+
+[project.scripts]
+lessong = "lessong.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/lessong"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/lessong", "tests", "README.md", "LICENSE", "CHANGELOG.md", "CONTRIBUTING.md", ".env.example"]
+
+[tool.uv]
+environments = [
+  "sys_platform == 'darwin' and platform_machine == 'arm64'",
+  "sys_platform == 'linux'",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+markers = ["ffmpeg: needs the ffmpeg binary", "slow: builds synthetic audio and runs the signal analysis"]
+filterwarnings = ["ignore::DeprecationWarning", "ignore::FutureWarning", "ignore::UserWarning"]
+
+[tool.ruff]
+line-length = 200
+target-version = "py310"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["E501"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+ignore = ["E731", "E741", "B905", "UP007", "UP035"]

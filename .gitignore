@@ -1,0 +1,15 @@
+.env
+.venv/
+.lessong/
+.planlangue/
+spike/
+__pycache__/
+*.mp3
+*.wav
+out/
+dist/
+build/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.DS_Store
