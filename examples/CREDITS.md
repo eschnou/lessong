@@ -3,8 +3,8 @@
 | file | what it is |
 |---|---|
 | `pas_tant_de_temps.mp3` | the original song, "Pas tant de temps" |
-| `pas_tant_de_temps_lesson.mp4` | the demo lesson `lessong` made from it (the audio of the lesson, over a still cover image so that GitHub can play it) |
-| `cover.png` | the cover image |
+| `pas_tant_de_temps_lesson.mp4` | the demo lesson `lessong` made from it, with the lines shown on screen in sync with the audio (made with `--video`) |
+| `cover.png` | a cover image (handy as the repository's social preview) |
 
 **The song.** "Pas tant de temps" was created by Laurent Eschenauer with [Suno](https://suno.com) (paid plan), 2026.
 
