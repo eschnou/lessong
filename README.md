@@ -35,6 +35,15 @@ lessong build examples/pas_tant_de_temps.mp3 --title "Pas tant de temps" --from 
   --outro "Make your own song lessons with lessong!" -o lesson.mp3
 ```
 
+## The video
+
+`--video` makes an MP4 next to the audio (or `-o lesson.mp4` for just the video): a title card with the next section, the spoken
+intro, then for each lesson line the song-language text, with its translation appearing as the voice says it; while the real song
+plays, the section's lines are shown with the line being sung highlighted and its translation underneath; and the sign-off.
+A progress bar and the section name stay on screen. Because the picture only changes when a line changes, a five-minute video
+renders in well under a minute and is a few MB. Every moment comes from the same timeline as the audio, so the two cannot drift.
+Latin, Cyrillic and Greek text works out of the box; for other scripts pass `--video-font /path/to/font.ttf`.
+
 ## What you need
 
 - Python 3.10 – 3.12 (macOS on Apple silicon or Linux; Windows is untested)
@@ -68,6 +77,7 @@ That runs the whole pipeline (about 4–5 minutes for a 4-minute song on an Appl
 lessong build song.mp3 --title "…" --artist "…" --to es --voice-gender female -o lesson.mp3
 lessong build song.mp3 --lyrics-file my_lyrics.txt -o lesson.mp3     # skip the online lookup, use your own text
 lessong build song.mp3 --repeats skip -o short.mp3                   # don't repeat a chorus you already taught
+lessong build song.mp3 --video -o lesson.mp3                         # also writes lesson.mp4: the lines on screen, in sync with the audio
 lessong render .lessong/song --intro "Welcome to my show" -o lesson.mp3  # add a spoken intro (2 bars of music, then the first lesson)
 ```
 
@@ -94,6 +104,7 @@ lessong render .lessong/song -o lesson.mp3         # ~15 s once the narration is
 | plan | translation, then the song is cut into sections (verse, chorus, …) | OpenAI |
 | loop | find a voice-free stretch that repeats exactly and loops without a seam | librosa |
 | render | narration, ducked bed, beat-aligned hand-overs, song excerpts, limiter | ElevenLabs, numpy, ffmpeg |
+| video (optional) | the lines being said and sung, on screen, in sync | Pillow, ffmpeg |
 
 A few details that make it sound right, because they are the hard parts:
 
@@ -124,6 +135,8 @@ reach for:
 | `--bed-db`, `--duck-db` | how far the music sits under the voice, and how much extra it dips while someone speaks |
 | `--swell-bars`, `--transition-bars`, `--settle-bars` | length of the swell, the crossfade and the settle after the song |
 | `--plain-entry` | turn the beat-aligned transitions off |
+| `--video`, `-o lesson.mp4` | also write a video next to the audio, or just the video (the file extension decides) |
+| `--video-size`, `--video-font` | video size (default 1280x720) and a TrueType font for scripts the bundled DejaVu Sans lacks (e.g. Japanese) |
 | `--intro "text"` | a spoken intro (e.g. your show's name) read over the loop before the first lesson, in the translation voice (`--intro-lang source` for the song's voice) |
 | `--outro "text"` | a sign-off read after the song has played to its very end: the voice alone, no music (`--outro-lang`, `--outro-gap` for the silence before it) |
 | `--intro-bars`, `--intro-swell-db` | music left after the intro before the first lesson line (default 2 bars, rising 10 dB then settling) |

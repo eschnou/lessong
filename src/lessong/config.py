@@ -47,6 +47,12 @@ class Settings:
     outro_lang: str = opt("target", "Which voice reads the outro: the translation language ('target') or the song's language ('source').", "Intro & outro", "render", str, None, ["target", "source"])
     outro_gap: float = opt(1.0, "Silence between the end of the song and the outro (seconds).", "Intro & outro")
 
+    # ---- video -------------------------------------------------------------------
+    video: bool = opt(False, "Also make a video next to the audio (same name, .mp4): the lines being said and sung, on screen. (-o name.mp4 makes just the video.)", "Video")
+    video_size: str = opt("1280x720", "Video size, WIDTHxHEIGHT (even numbers).", "Video", "render", str)
+    video_fps: int = opt(10, "Video frame rate (the picture only changes when a line changes, so a low rate is fine).", "Video")
+    video_font: str = opt(None, "TrueType font for the video text (default: bundled DejaVu Sans; needed for scripts it lacks, e.g. Japanese).", "Video", "render", str)
+
     # ---- bed -> song hand-over ---------------------------------------------
     swell_bars: float = opt(1.0, "After the last voice, the bed swells up to the song's loudness over this many bars.", "Transition")
     transition_bars: float = opt(1.0, "Length of the beat-aligned crossfade from the bed into the song, in bars.", "Transition")

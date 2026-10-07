@@ -12,6 +12,7 @@ import soundfile as sf
 
 from . import audio, lyrics
 from . import plan as plan_mod
+from . import video as video_mod
 from .audio import log
 from .config import Settings
 from .elevenlabs import ElevenLabs
@@ -125,8 +126,15 @@ def do_render(ws: Workspace, s: Settings, eleven: ElevenLabs, plan: dict, out: P
     dst_v = eleven.resolve_voice(s.dst_voice, plan["target_lang"], s.voice_gender)
     s.source_lang, s.target_lang = plan["source_lang"], plan["target_lang"]
     voices = Voices(eleven, s, ws.tts, src_v, dst_v)
-    dur = assemble(plan, s, ws.source, loop, nov, feat, voices, out, ws.dir / "mix.wav")
-    log(f"[done] {out}  ({dur / 60:.1f} min; {voices.chars} new TTS characters)")
+    want_video = s.video or out.suffix.lower() == ".mp4"
+    audio_out = ws.dir / "lesson_audio.mp3" if out.suffix.lower() == ".mp4" else out      # -o lesson.mp4: the audio is only a by-product
+    video_out = out if out.suffix.lower() == ".mp4" else out.with_suffix(".mp4")
+    dur, timeline = assemble(plan, s, ws.source, loop, nov, feat, voices, audio_out, ws.dir / "mix.wav")
+    (ws.dir / "timeline.json").write_text(json.dumps(timeline, indent=1))
+    if want_video:
+        video_mod.make_video(timeline, plan, audio_out, video_out, s, plan.get("meta", {}).get("title"))
+    log(f"[done] {video_out if want_video and out.suffix.lower() == '.mp4' else out}  ({dur / 60:.1f} min; {voices.chars} new TTS characters)"
+        + (f"; video: {video_out}" if want_video and out.suffix.lower() != ".mp4" else ""))
 
 
 def list_loops(ws: Workspace, s: Settings, bars_list=(1, 2, 4)) -> None:

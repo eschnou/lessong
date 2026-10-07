@@ -7,7 +7,7 @@ from pathlib import Path
 
 from dotenv import find_dotenv, load_dotenv
 
-from . import __version__, config
+from . import __version__, config, video
 from . import pipeline as pl
 from .audio import log
 from .elevenlabs import ElevenLabs
@@ -23,7 +23,7 @@ def _common(p: argparse.ArgumentParser, needs_out: bool = False) -> None:
     p.add_argument("--title", help="song title (default: from file tags or file name)")
     p.add_argument("--artist", help="artist (default: from file tags)")
     if needs_out:
-        p.add_argument("-o", "--output", type=Path, help="output file; extension picks the format [default: <song>.lessong.mp3]")
+        p.add_argument("-o", "--output", type=Path, help="output file; the extension picks the format (.mp4 = a lesson video) [default: <song>.lessong.mp3]")
 
 
 def doctor() -> int:
@@ -91,6 +91,8 @@ def main(argv: list[str] | None = None) -> int:
     if a.cmd == "doctor":
         return doctor()
     s = config.from_args(a)
+    if a.cmd in ("build", "render") and (s.video or (a.output and a.output.suffix.lower() == ".mp4")):
+        video.parse_size(s.video_size)           # fail fast on a bad --video-size, before any slow or paid step
     try:
         ws = pl.Workspace(Path(a.input), a.workdir)
         if a.cmd in ("build", "plan", "loops") or not ws.vocals.exists():

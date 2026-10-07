@@ -157,3 +157,29 @@ def test_outro_is_the_voice_alone_after_the_song_has_played_to_its_end(workspace
     assert abs(y[int(o["speech_start"] * sr):int(o["speech_end"] * sr)]).max() > 0.02       # then the voice
     assert sf.info(str(workspace / "mix.wav")).duration == pytest.approx(o["speech_end"], abs=0.05)   # and nothing after it: no music tail
     assert o["speech_end"] - o["speech_start"] > 0.5 and plain < sf.info(str(workspace / "mix.wav")).duration
+
+
+@needs_ffmpeg
+@pytest.mark.slow
+def test_video_is_made_next_to_the_audio_or_on_its_own(workspace, wired, synth, tmp_path):
+    (workspace / "lyrics.txt").write_text(synth["lyrics"])
+    plan_args = ["--sections", "gap", "--min-lines", "2", "--max-lines", "4", "--section-gap", "3"]
+    cli.main(["build", str(workspace), "--lyrics-file", str(workspace / "lyrics.txt"), *plan_args, "--loop-bars", "4", "--to", "xx",
+              "--intro", "Hello", "--video", "--video-size", "640x360", "-o", str(tmp_path / "lesson.mp3")])
+    assert (tmp_path / "lesson.mp3").exists() and (tmp_path / "lesson.mp4").exists()            # the video sits next to the audio
+    tl = json.loads((workspace / "timeline.json").read_text())
+    kinds = [e["kind"] for e in tl["events"]]
+    assert kinds.count("src") == 8 and kinds.count("dst") == 8 and kinds.count("song") == 2 and kinds[0] == "intro"
+    dur = lambda p: float(subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(p)], capture_output=True, text=True).stdout)
+    assert dur(tmp_path / "lesson.mp4") == pytest.approx(dur(tmp_path / "lesson.mp3"), abs=0.3)
+    cli.main(["render", str(workspace), "--loop-bars", "4", "--to", "xx", "--video-size", "640x360", "-o", str(tmp_path / "only.mp4")])
+    assert (tmp_path / "only.mp4").exists() and not (tmp_path / "only.mp3").exists()           # -o x.mp4: just the video (it carries the audio)
+    assert "audio" in subprocess.run(["ffprobe", "-v", "error", "-show_entries", "stream=codec_type", "-of", "csv=p=0", str(tmp_path / "only.mp4")],
+                                     capture_output=True, text=True).stdout
+
+
+def test_a_bad_video_size_fails_immediately_before_any_work(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    with pytest.raises(SystemExit, match="video-size"):
+        cli.main(["render", "song.mp3", "--video", "--video-size", "huge"])
+    assert not (tmp_path / ".lessong").exists()                                   # nothing was created

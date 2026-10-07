@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- `--video` / `-o lesson.mp4`: a lyric-synced lesson video (title card, spoken lines with their translation appearing as it is said,
+  karaoke view of the real song, intro/outro text, progress bar). Rendered from the mixer's timeline with Pillow + ffmpeg;
+  `--video-size`, `--video-fps`, `--video-font`. Bundles DejaVu Sans (see `src/lessong/assets/DejaVu-LICENSE.txt`).
+  `timeline.json` is written next to the other work files.
+
 - The last excerpt now plays the song to its natural end (no fade-out); `--outro "text"` adds a voice-only sign-off after it
   (`--outro-lang`, `--outro-gap`).
 - Cut points go in the middle of a real silence in the vocal track (the transcript's word end can fall inside a held note).

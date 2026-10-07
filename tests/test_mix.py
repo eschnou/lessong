@@ -146,3 +146,28 @@ def test_the_last_excerpt_stops_at_the_end_of_the_song_and_cuts_at_real_silence(
     plan = {"lines": L, "sections": [{"lines": [0]}, {"lines": [1]}]}
     w0, w1 = song_windows(plan, Settings(), 30.0)
     assert w1["end"] == 30.0 and w1["fade_out"] <= 0.05      # no fade-out: the song ends by itself and w0["end"] == 13.0 and w1["start"] == 13.0
+
+
+def test_learn_block_reports_when_each_clip_is_spoken_without_changing_the_audio():
+    s = Settings(lead_in=1.0, gap_lang=0.5, gap_line=0.9, learn_tail=0.5)
+    lines = [{"i": 3, "text": "a", "translation": "b"}, {"i": 7, "text": "c", "translation": "d"}]
+    events: list = []
+    block, _ = learn_block(lines, StubVoices(s), _loop(), s, events=events)
+    plain, _ = learn_block(lines, StubVoices(s), _loop(), s)
+    assert np.array_equal(block, plain)                                         # recording events never changes the sound
+    got = [(e["kind"], e["line"], round(e["t0"], 2), round(e["t1"], 2)) for e in events]
+    assert got == [("src", 3, 1.0, 1.6), ("dst", 3, 2.1, 2.7), ("src", 7, 3.6, 4.2), ("dst", 7, 4.7, 5.3)]
+    voice = lambda e: rms(block[int(e["t0"] * SR):int(e["t1"] * SR)])
+    quiet = rms(block[int(0.3 * SR):int(0.9 * SR)])
+    assert all(voice(e) > 3 * quiet for e in events)                             # the voice really is where the events say
+
+
+def test_learn_block_reports_the_intro_speech_too():
+    s = Settings(lead_in=1.0, learn_tail=0.5)
+    loop, bar = _loop(), len(_loop()) / 2
+    prelude = dict(audio=np.sin(2 * np.pi * 500 * np.arange(int(1.4 * SR)) / SR) * db_to_gain(s.voice_level_db) * 1.4142, bar=bar, bars=2,
+                   swell_db=10.0, text="hello there")
+    events: list = []
+    learn_block([{"i": 0, "text": "a", "translation": "b"}], StubVoices(s), loop, s, prelude=prelude, events=events)
+    assert events[0]["kind"] == "intro" and events[0]["text"] == "hello there" and (round(events[0]["t0"], 2), round(events[0]["t1"], 2)) == (1.0, 2.4)
+    assert events[1]["kind"] == "src" and events[1]["t0"] == pytest.approx(prelude["timing"]["teach_start"], abs=1e-3)

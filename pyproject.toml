@@ -32,6 +32,7 @@ dependencies = [
   "requests",
   "python-dotenv",
   "openai>=1.40",
+  "pillow>=10.1",
 ]
 
 [project.urls]
