@@ -129,7 +129,7 @@ def test_asking_for_another_language_after_a_first_run_makes_a_second_lesson_wit
     run_plan()                                                                                  # no language asked for: back to the first one
     assert sha(base / "plan.json") == before and not (project / ".lessong" / "song-en-es").exists()
     run_plan("--to", "it")                                                                      # asking again reuses the second folder
-    assert [p.name for p in (project / ".lessong").iterdir()] == sorted([p.name for p in (project / ".lessong").iterdir()], key=lambda n: n) and len(list((project / ".lessong").iterdir())) == 2
+    assert {p.name for p in (project / ".lessong").iterdir()} == {"song", "song-en-it"}          # exactly two folders (a set: directory order is arbitrary)
 
 
 def test_the_old_behaviour_that_silently_ignored_the_language_is_gone(project, capsys):
